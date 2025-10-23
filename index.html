@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rehina — Document Viewer</title>
+<style>
+  :root{
+    --bg:#f5f6f8;
+    --panel:#ffffff;
+    --accent:#2d3748;
+    --muted:#94a3b8;
+    --pink:#ff4b6e;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#eef2f7,#f8fafc);color:var(--accent); overflow: hidden;}
+  .viewer{
+    width:720px; max-width:94%;
+    background:var(--panel);
+    border-radius:12px;
+    box-shadow:0 12px 30px rgba(15,23,42,0.12);
+    overflow:hidden;
+  }
+  .header{
+    display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #eef2f6;
+    background:linear-gradient(90deg,#ffffff,#fbfcfd);
+  }
+  .file-icon{
+    width:42px;height:42px;border-radius:6px;background:linear-gradient(180deg,#e9f0ff,#dbe9ff);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:#0b63d6;
+    box-shadow:inset 0 -6px 12px rgba(11,99,214,0.06);
+  }
+  .meta{flex:1}
+  .title{font-size:15px;font-weight:600}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .actions{display:flex;gap:8px;align-items:center}
+  .open-btn{
+    background:var(--pink);color:white;padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600;
+    box-shadow:0 6px 18px rgba(255,75,110,0.18);transition:transform .12s ease;
+  }
+  .open-btn:active{transform:translateY(1px)}
+  .content{
+    padding:26px;display:grid;grid-template-columns:1fr 280px;gap:20px;
+  }
+  .doc-preview{
+    background:#fbfdff;border-radius:10px;padding:18px;height:320px;display:flex;flex-direction:column;gap:12px;
+    justify-content:center;align-items:center;border:1px dashed #e6eef8;color:var(--muted);
+  }
+  .doc-title{font-weight:700;color:#213547}
+  .doc-text{font-size:13px;line-height:1.4;color:#475569;text-align:center}
+  .side{
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .info{background:#fff;border-radius:10px;padding:12px;border:1px solid #f1f5f9}
+  .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .value{font-weight:600}
+  /* hidden message */
+  .surprise{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(8,10,15,0.52);backdrop-filter:blur(4px);opacity:0;pointer-events:none;
+    transition:opacity .35s ease;
+    overflow: visible;
+  }
+  .surprise.show{
+    opacity:1;pointer-events:auto;
+  }
+  .card{
+    background:linear-gradient(180deg,#fff5f7,#fff);
+    border-radius:14px;padding:28px 36px;max-width:520px;text-align:center;box-shadow:0 18px 50px rgba(15,23,42,0.3);
+    transform:translateY(12px);transition:transform .35s ease;
+    position: relative;
+    z-index: 1000;
+  }
+  .surprise.show .card{
+    transform:none;
+  }
+  .big{
+    font-size:22px;font-weight:800;color:var(--pink);margin:6px 0;
+    min-height: 30px;
+  }
+  .small{color:#475569;margin-bottom:12px}
+  .close{
+    margin-top:10px;background:#fff;border:1px solid #f1f5f9;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;
+  }
+  /* Confetti */
+  .confetti-piece{
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background-color: var(--pink);
+    opacity: 0.9;
+    top: 0;
+    left: 50%;
+    pointer-events: none;
+    animation: confetti-fall 3s linear forwards;
+    z-index: 9999;
+    border-radius: 2px;
+  }
+  @keyframes confetti-fall {
+    to {
+      transform: translate(calc(var(--x) * 1vw), 100vh) rotate(360deg);
+      opacity: 0;
+    }
+  }
+  /* Floating cherry blossoms */
+  .cherry-blossom {
+    position: fixed;
+    bottom: -30px;
+    font-size: 24px;
+    color: #f5a9b8; /* soft pink */
+    animation: floatUpCherry linear forwards;
+    opacity: 0.8;
+    user-select: none;
+    pointer-events: none;
+    z-index: 900;
+    filter: drop-shadow(0 0 2px #f48fb1);
+  }
+  @keyframes floatUpCherry {
+    to {
+      transform: translateY(-110vh) rotate(360deg);
+      opacity: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="viewer" role="main" aria-label="Document viewer">
+  <div class="header">
+    <div class="file-icon">PDF</div>
+    <div class="meta">
+      <div class="title">Rehina — Q3 Report</div>
+      <div class="sub">Uploaded: Apr 03, 2024 • Size: 312 KB</div>
+    </div>
+    <div class="actions">
+      <button class="open-btn" id="openBtn">Open Document</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="doc-preview" id="preview">
+      <div class="doc-title">Rehina Report (Preview)</div>
+      <div class="doc-text">Click “Open Document” to view the full file. This preview is read-only.</div>
+    </div>
+
+    <div class="side">
+      <div class="info">
+        <div class="label">Author</div>
+        <div class="value">H. Ahmed</div>
+      </div>
+      <div class="info">
+        <div class="label">Department</div>
+        <div class="value">Research & Development</div>
+      </div>
+      <div class="info">
+        <div class="label">Status</div>
+        <div class="value">Confidential</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Surprise overlay -->
+<div class="surprise" id="surprise" role="dialog" aria-modal="true" aria-label="Surprise message">
+  <div class="card">
+    <div style="font-size:42px">💌</div>
+    <div class="big" id="typedMessage"></div>
+    <div class="small">From <strong>Reg</strong> — 💗</div>
+    <button class="close" id="closeBtn">Close</button>
+  </div>
+</div>
+
+<script>
+  const openBtn = document.getElementById('openBtn');
+  const surprise = document.getElementById('surprise');
+  const closeBtn = document.getElementById('closeBtn');
+  const typedMessage = document.getElementById('typedMessage');
+
+  let revealed = false;
+
+  function typeMessage(text, element, speed = 100) {
+    element.textContent = '';
+    let i = 0;
+    const timer = setInterval(() => {
+      element.textContent += text.charAt(i);
+      i++;
+      if (i >= text.length) clearInterval(timer);
+    }, speed);
+  }
+
+  function createConfetti() {
+    const count = 50;
+    for(let i=0; i<count; i++){
+      const confetti = document.createElement('div');
+      confetti.classList.add('confetti-piece');
+      confetti.style.setProperty('--x', (Math.random() * 100 - 50).toFixed(2));
+      confetti.style.left = Math.random() * window.innerWidth + 'px';
+      confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+      confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(confetti);
+      setTimeout(() => {
+        confetti.remove();
+      }, 3000);
+    }
+  }
+
+  function createCherryBlossom() {
+    const cherry = document.createElement('div');
+    cherry.classList.add('cherry-blossom');
+    cherry.style.left = Math.random() * window.innerWidth + 'px';
+    cherry.style.animationDuration = (5 + Math.random() * 5) + 's';
+    cherry.style.fontSize = (20 + Math.random() * 15) + 'px';
+    cherry.textContent = '🌸';
+    document.body.appendChild(cherry);
+    setTimeout(() => {
+      cherry.remove();
+    }, 10000);
+  }
+
+  let cherryInterval;
+
+  openBtn.addEventListener('click', () => {
+    if (revealed) return;
+    revealed = true;
+
+    document.getElementById('preview').innerHTML = '<div style="font-weight:700;color:#0f1724">Opening document…</div>';
+
+    setTimeout(() => {
+      surprise.classList.add('show');
+      typeMessage("uli na ha tanauan, dani", typedMessage, 120);
+      createConfetti();
+
+      cherryInterval = setInterval(createCherryBlossom, 700);
+    }, 700);
+  });
+
+  closeBtn.addEventListener('click', () => {
+    surprise.classList.remove('show');
+    clearInterval(cherryInterval);
+  });
+
+  surprise.addEventListener('click', (e) => {
+    if (e.target === surprise) {
+      surprise.classList.remove('show');
+      clearInterval(cherryInterval);
+    }
+  });
+</script>
+
+</body>
+</html>
